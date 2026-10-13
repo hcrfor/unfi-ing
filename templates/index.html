@@ -1,4 +1,3 @@
-<!-- c:\Users\han\development\antigraviy\unfi-ing\templates\index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -367,6 +366,7 @@
             font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
         }
 
+        /* 헤더 스타일 (2F5597 짙은 남색) */
         thead th {
             background: #2F5597;
             color: #ffffff;
@@ -383,6 +383,7 @@
             white-space: nowrap;
         }
 
+        /* 합계 행 스타일 */
         tr.row-grand-total {
             background-color: #D9E1F2;
             font-weight: bold;
@@ -415,6 +416,7 @@
             color: #000000;
         }
 
+        /* 100% 완료 / 미조사 0건 행: 굵은 빨간색 글씨 */
         tr.row-completed-red td {
             color: #ff0000 !important;
             font-weight: bold !important;
@@ -481,6 +483,9 @@
         </div>
 
         <div class="quick-actions">
+            <button class="btn-quick" id="btnLoadDefault">
+                <span>🔄</span> 저장소 내 엑셀 데이터로 즉시 분석
+            </button>
             <button class="btn-quick" id="btnResetData" style="display: none;">
                 <span>✕</span> 분석 초기화
             </button>
@@ -499,6 +504,7 @@
     </div>
 
     <div id="resultDashboard">
+        <!-- KPI 요약 카드 -->
         <div class="kpi-grid">
             <div class="kpi-card blue">
                 <div class="kpi-label">전체 필수 표본수</div>
@@ -522,6 +528,7 @@
             </div>
         </div>
 
+        <!-- 결과 시트 뷰어 및 다운로드 -->
         <div class="glass-card">
             <div class="table-toolbar">
                 <div class="tab-buttons">
@@ -539,6 +546,7 @@
                 </div>
             </div>
 
+            <!-- 첨부 이미지와 동일한 엑셀 시트 렌더링 -->
             <div class="table-container">
                 <table>
                     <thead>
@@ -560,11 +568,12 @@
     </div>
 
     <footer>
-        <p>도시 조사결과 집계 자동화 시스템 | Local Flask Web Service</p>
+        <p>도시 조사결과 집계 자동화 시스템 | GitHub 저장소: <a href="https://github.com/hcrfor/unfi-ing" target="_blank">hcrfor/unfi-ing</a></p>
     </footer>
 </div>
 
 <script>
+    // 상수 및 규칙 정의
     const TARGET_SIDOS = ["경기도", "서울특별시", "인천광역시"];
     const EXCLUDE_SIGUNGUS = new Set([
         "서초구", "강남구", "강동구", "송파구", "성동구", "중랑구", "노원구", "광진구",
@@ -578,6 +587,7 @@
     const fileSizeTxt = document.getElementById('fileSizeTxt');
     const loader = document.getElementById('loader');
     const resultDashboard = document.getElementById('resultDashboard');
+    const btnLoadDefault = document.getElementById('btnLoadDefault');
     const btnResetData = document.getElementById('btnResetData');
     const btnExportExcel = document.getElementById('btnExportExcel');
     const searchDistrict = document.getElementById('searchDistrict');
@@ -612,6 +622,24 @@
     dropZone.addEventListener('drop', (e) => {
         if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
             handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    btnLoadDefault.addEventListener('click', async () => {
+        showLoader(true);
+        try {
+            const defaultUrl = '2026 도시 조사결과표(한성안).xlsx';
+            const response = await fetch(encodeURI(defaultUrl));
+            if (!response.ok) {
+                throw new Error("파일 요청 응답 실패");
+            }
+            const blob = await response.blob();
+            const file = new File([blob], "2026 도시 조사결과표(한성안).xlsx", { type: blob.type });
+            handleFile(file);
+        } catch (err) {
+            showLoader(false);
+            // 웹서버가 아닌 로컬 file:// 로 직접 열었을 경우 브라우저 보안 정책으로 fetch가 차단되므로 바로 파일 선택창을 열어줍니다
+            fileInput.click();
         }
     });
 
@@ -814,6 +842,7 @@
             rowType: 'grand_total'
         };
 
+        // 전체 합계 -> 각 3개 시도 합계 -> 시군구 상세 배치
         globalAggRows = [grandTotalRow, ...sidoSummaries, ...districtRows];
 
         document.getElementById('kpiPilsu').textContent = grandPilsu.toLocaleString() + ' 개';
@@ -827,6 +856,7 @@
         renderTable();
     }
 
+    // 웹 화면 테이블 렌더링 (첨부 이미지 서식 반영)
     function renderTable() {
         tableBody.innerHTML = '';
 
@@ -846,6 +876,8 @@
 
         filtered.forEach(row => {
             const tr = document.createElement('tr');
+            
+            // 행 스타일 지정
             if (row.rowType === 'grand_total') {
                 tr.className = 'row-grand-total';
             } else if (row.rowType === 'sido_total') {
@@ -854,6 +886,7 @@
                 else if (row.시도 === '인천광역시') tr.className = 'row-incheon-total';
                 else tr.className = 'row-grand-total';
             } else if (row.총미조사 === 0) {
+                // 시군구 행 중 미조사 0건인 경우: 굵은 빨간색 글씨
                 tr.className = 'row-completed-red';
             }
 
@@ -873,6 +906,7 @@
         });
     }
 
+    // 엑셀 다운로드 (첨부 이미지와 100% 동일한 서식, 폰트색, 배경색, 정렬 적용)
     btnExportExcel.addEventListener('click', () => {
         if (!globalAggRows || globalAggRows.length === 0) {
             alert("다운로드할 분석 결과가 없습니다.");
@@ -880,6 +914,8 @@
         }
 
         const wb = XLSX.utils.book_new();
+
+        // 1. 데이터 배열 생성
         const aoaData = [
             ["시도", "시군구", "필수 개수", "조사완료", "진행율", "기본 미조사 개수", "가로수 미조사 개수", "총 미조사 개수"]
         ];
@@ -899,15 +935,16 @@
 
         const ws = XLSX.utils.aoa_to_sheet(aoaData);
 
+        // 2. 스타일 정의 (열 너비 및 행 높이)
         ws['!cols'] = [
-            { wch: 13 },
-            { wch: 15 },
-            { wch: 13 },
-            { wch: 14 },
-            { wch: 12 },
-            { wch: 18 },
-            { wch: 18 },
-            { wch: 16 }
+            { wch: 13 }, // 시도
+            { wch: 15 }, // 시군구
+            { wch: 13 }, // 필수 개수
+            { wch: 14 }, // 조사완료
+            { wch: 12 }, // 진행율
+            { wch: 18 }, // 기본 미조사 개수
+            { wch: 18 }, // 가로수 미조사 개수
+            { wch: 16 }  // 총 미조사 개수
         ];
 
         ws['!rows'] = [{ hpt: 28 }];
@@ -915,6 +952,7 @@
             ws['!rows'].push({ hpt: 22 });
         }
 
+        // 테두리 객체
         const thinBorder = {
             top: { style: 'thin', color: { rgb: 'D9D9D9' } },
             bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
@@ -922,6 +960,7 @@
             right: { style: 'thin', color: { rgb: 'D9D9D9' } }
         };
 
+        // 헤더 스타일 (2F5597 짙은 남색 배경, 흰색 굵은 글씨)
         const headerStyle = {
             fill: { fgColor: { rgb: "2F5597" } },
             font: { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
@@ -936,8 +975,9 @@
             }
         }
 
+        // 데이터 행 서식 적용
         globalAggRows.forEach((r, idx) => {
-            const rowIdx = idx + 1;
+            const rowIdx = idx + 1; // 1-indexed (0은 헤더)
             const rowType = r.rowType;
             const sido = r.시도;
             const totalMi = r.총미조사;
@@ -946,20 +986,21 @@
             let rowFont = { name: "맑은 고딕", sz: 11, bold: false, color: { rgb: "000000" } };
 
             if (rowType === "grand_total") {
-                rowFill = { fgColor: { rgb: "D9E1F2" } };
+                rowFill = { fgColor: { rgb: "D9E1F2" } }; // 전체 합계 (소프트 블루그레이)
                 rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "000000" } };
             } else if (rowType === "sido_total") {
                 rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "000000" } };
                 if (sido === "경기도") {
-                    rowFill = { fgColor: { rgb: "FCE4D6" } };
+                    rowFill = { fgColor: { rgb: "FCE4D6" } }; // 피치
                 } else if (sido === "서울특별시") {
-                    rowFill = { fgColor: { rgb: "DDEBF7" } };
+                    rowFill = { fgColor: { rgb: "DDEBF7" } }; // 스카이블루
                 } else if (sido === "인천광역시") {
-                    rowFill = { fgColor: { rgb: "E8DDF7" } };
+                    rowFill = { fgColor: { rgb: "E8DDF7" } }; // 라벤더
                 } else {
                     rowFill = { fgColor: { rgb: "D9E1F2" } };
                 }
             } else {
+                // 시군구 행: 미조사 개수가 0이면 굵은 빨간색 글씨!
                 if (totalMi === 0) {
                     rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "FF0000" } };
                 }
@@ -980,13 +1021,16 @@
                     cellStyle.fill = rowFill;
                 }
 
+                // 열별 정렬 및 숫자 서식
                 if (c === 0 || c === 1) {
                     cellStyle.alignment.horizontal = "center";
                 } else if (c === 4) {
+                    // 진행율 (0.0% 서식)
                     cellStyle.alignment.horizontal = "right";
                     cell.t = 'n';
                     cell.z = '0.0%';
                 } else {
+                    // 숫자 서식 (#,##0)
                     cellStyle.alignment.horizontal = "right";
                     cell.t = 'n';
                     cell.z = '#,##0';

@@ -631,14 +631,15 @@
             const defaultUrl = '2026 도시 조사결과표(한성안).xlsx';
             const response = await fetch(encodeURI(defaultUrl));
             if (!response.ok) {
-                throw new Error("저장소 내 기본 엑셀 파일을 불러오지 못했습니다. 직접 파일을 올려주세요.");
+                throw new Error("파일 요청 응답 실패");
             }
             const blob = await response.blob();
             const file = new File([blob], "2026 도시 조사결과표(한성안).xlsx", { type: blob.type });
             handleFile(file);
         } catch (err) {
-            alert(err.message);
             showLoader(false);
+            // 웹서버가 아닌 로컬 file:// 로 직접 열었을 경우 브라우저 보안 정책으로 fetch가 차단되므로 바로 파일 선택창을 열어줍니다
+            fileInput.click();
         }
     });
 
