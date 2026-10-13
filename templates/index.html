@@ -5,12 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>도시 조사결과 집계 및 미조사 분석 대시보드</title>
-    <!-- 구글 폰트 (Outfit & 프리미엄 본고딕) -->
+    <!-- 구글 폰트 (Outfit & Noto Sans KR) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <!-- SheetJS (Excel 파싱 및 생성 라이브러리) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- xlsx-js-style (스타일, 배경색, 폰트색상, 테두리가 완벽 지원되는 엑셀 엔진) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
         :root {
@@ -28,6 +28,13 @@
             --text-sub: #94a3b8;
             --text-dim: #64748b;
             --glass-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+            /* 엑셀 테마와 매칭되는 컬러 */
+            --excel-header: #2F5597;
+            --excel-grand: #D9E1F2;
+            --excel-gyeonggi: #FCE4D6;
+            --excel-seoul: #DDEBF7;
+            --excel-incheon: #E8DDF7;
         }
 
         * {
@@ -54,13 +61,12 @@
 
         .container {
             width: 100%;
-            max-width: 1100px;
+            max-width: 1140px;
             display: flex;
             flex-direction: column;
             gap: 28px;
         }
 
-        /* 헤더 영역 */
         header {
             text-align: center;
             padding: 20px 0 10px;
@@ -94,12 +100,11 @@
         header p {
             font-size: 15px;
             color: var(--text-sub);
-            max-width: 650px;
+            max-width: 680px;
             margin: 0 auto;
             line-height: 1.6;
         }
 
-        /* 글래스모피즘 카드 기본 스타일 */
         .glass-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -111,7 +116,7 @@
             transition: all 0.3s ease;
         }
 
-        /* 업로드 구역 */
+        /* 드래그앤드롭 업로드 구역 */
         .upload-section {
             display: flex;
             flex-direction: column;
@@ -164,7 +169,6 @@
             display: none;
         }
 
-        /* 퀵 샘플 로드 버튼 바 */
         .quick-actions {
             display: flex;
             gap: 12px;
@@ -194,7 +198,6 @@
             border-color: var(--primary);
         }
 
-        /* 파일 정보 & 상태 표시 */
         .file-info-badge {
             display: none;
             align-items: center;
@@ -217,17 +220,16 @@
             color: var(--primary);
         }
 
-        /* 분석 결과 대시보드 */
+        /* 대시보드 */
         #resultDashboard {
             display: none;
             flex-direction: column;
             gap: 24px;
         }
 
-        /* KPI 요약 카드 그리드 */
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             gap: 16px;
         }
 
@@ -274,7 +276,6 @@
             margin-top: 4px;
         }
 
-        /* 툴바 & 컨트롤러 */
         .table-toolbar {
             display: flex;
             justify-content: space-between;
@@ -328,9 +329,9 @@
         }
 
         .btn-download {
-            background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border: none;
-            color: #0b0f19;
+            color: #ffffff;
             padding: 11px 22px;
             border-radius: 12px;
             font-size: 14px;
@@ -340,20 +341,21 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
 
         .btn-download:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
         }
 
-        /* 테이블 래퍼 */
+        /* 엑셀 시트 뷰어 테마 (첨부 이미지와 동일한 컬러 반영) */
         .table-container {
             overflow-x: auto;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
         table {
@@ -361,114 +363,63 @@
             border-collapse: collapse;
             text-align: left;
             font-size: 13.5px;
+            color: #1e293b;
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
         }
 
         thead th {
-            background: rgba(30, 41, 59, 0.9);
-            color: var(--text-main);
+            background: #2F5597;
+            color: #ffffff;
             font-weight: 700;
-            padding: 14px 16px;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 14px;
+            text-align: center;
+            border: 1px solid #244275;
             white-space: nowrap;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            transition: background 0.15s;
-        }
-
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.03);
         }
 
         tbody td {
-            padding: 12px 16px;
-            color: var(--text-sub);
+            padding: 9px 14px;
+            border: 1px solid #d9d9d9;
             white-space: nowrap;
         }
 
-        /* 특수 행 스타일 */
         tr.row-grand-total {
-            background: rgba(56, 189, 248, 0.12) !important;
-            font-weight: 700;
+            background-color: #D9E1F2;
+            font-weight: bold;
         }
         tr.row-grand-total td {
-            color: #ffffff;
-            border-top: 1px solid rgba(56, 189, 248, 0.3);
-            border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+            color: #000000;
         }
 
-        tr.row-sido-total {
-            background: rgba(129, 140, 248, 0.08) !important;
-            font-weight: 600;
+        tr.row-gyeonggi-total {
+            background-color: #FCE4D6;
+            font-weight: bold;
         }
-        tr.row-sido-total td {
-            color: #e0e7ff;
-            border-bottom: 1px solid rgba(129, 140, 248, 0.2);
-        }
-
-        tr.row-completed {
-            background: rgba(52, 211, 153, 0.04);
-        }
-        tr.row-completed td:nth-child(2) {
-            color: #ffffff;
-            font-weight: 600;
+        tr.row-gyeonggi-total td {
+            color: #000000;
         }
 
-        /* 진행률 바 */
-        .progress-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 130px;
+        tr.row-seoul-total {
+            background-color: #DDEBF7;
+            font-weight: bold;
+        }
+        tr.row-seoul-total td {
+            color: #000000;
         }
 
-        .progress-bg {
-            flex-grow: 1;
-            height: 7px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 999px;
-            overflow: hidden;
+        tr.row-incheon-total {
+            background-color: #E8DDF7;
+            font-weight: bold;
+        }
+        tr.row-incheon-total td {
+            color: #000000;
         }
 
-        .progress-fill {
-            height: 100%;
-            border-radius: 999px;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
+        tr.row-completed-red td {
+            color: #ff0000 !important;
+            font-weight: bold !important;
         }
 
-        .progress-fill.full {
-            background: #34d399;
-        }
-
-        .progress-text {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--text-main);
-            min-width: 44px;
-            text-align: right;
-        }
-
-        /* 상태 뱃지 */
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .badge-done {
-            background: rgba(52, 211, 153, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(52, 211, 153, 0.3);
-        }
-        .badge-ing {
-            background: rgba(251, 191, 36, 0.12);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.25);
-        }
-
-        /* 로딩 스피너 */
         .loader-overlay {
             display: none;
             text-align: center;
@@ -489,7 +440,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* 푸터 */
         footer {
             margin-top: 40px;
             text-align: center;
@@ -514,17 +464,17 @@
 
 <div class="container">
     <header>
-        <div class="badge-tag">⚡ 실시간 분석 대시보드</div>
+        <div class="badge-tag">📊 지역별 조사 집계 추출기</div>
         <h1>도시 조사결과 집계 & 미조사 현황 분석</h1>
         <p>
             조사결과 엑셀 파일을 업로드하면 수도권 3개 시도(경기도, 서울, 인천)의 표본점과 결과를 대조하여, 
-            시군구별 진행율 및 미조사 현황을 즉시 분석하고 엑셀 파일로 추출합니다.
+            시군구별 진행율 및 미조사 현황을 집계하고 서식이 완벽 적용된 엑셀 파일로 추출합니다.
         </p>
     </header>
 
     <div class="glass-card upload-section">
         <div class="dropzone" id="dropZone">
-            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-icon">📥</div>
             <div class="dropzone-title">조사결과 엑셀 파일(.xlsx)을 드래그하거나 클릭하여 선택</div>
             <div class="dropzone-sub">표본점목록 및 조사결과표 시트가 포함된 원본 엑셀 파일을 업로드하세요</div>
             <input type="file" class="file-input" id="fileInput" accept=".xlsx, .xls">
@@ -584,7 +534,7 @@
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="text" class="search-input" id="searchDistrict" placeholder="시군구 검색...">
                     <button class="btn-download" id="btnExportExcel">
-                        <span>📥</span> 결과 엑셀 다운로드
+                        <span>📥</span> 양식 엑셀 파일 다운로드 (.xlsx)
                     </button>
                 </div>
             </div>
@@ -593,15 +543,14 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>시도</th>
-                            <th>시군구</th>
-                            <th style="text-align: right;">필수 개수</th>
-                            <th style="text-align: right;">조사완료</th>
-                            <th style="min-width: 150px;">진행율</th>
-                            <th style="text-align: right;">기본 미조사</th>
-                            <th style="text-align: right;">가로수 미조사</th>
-                            <th style="text-align: right;">총 미조사</th>
-                            <th style="text-align: center;">상태</th>
+                            <th style="width: 110px;">시도</th>
+                            <th style="width: 120px;">시군구</th>
+                            <th style="width: 110px; text-align: center;">필수 개수</th>
+                            <th style="width: 110px; text-align: center;">조사완료</th>
+                            <th style="width: 100px; text-align: center;">진행율</th>
+                            <th style="width: 140px; text-align: center;">기본 미조사 개수</th>
+                            <th style="width: 140px; text-align: center;">가로수 미조사 개수</th>
+                            <th style="width: 130px; text-align: center;">총 미조사 개수</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -900,34 +849,25 @@
             if (row.rowType === 'grand_total') {
                 tr.className = 'row-grand-total';
             } else if (row.rowType === 'sido_total') {
-                tr.className = 'row-sido-total';
+                if (row.시도 === '경기도') tr.className = 'row-gyeonggi-total';
+                else if (row.시도 === '서울특별시') tr.className = 'row-seoul-total';
+                else if (row.시도 === '인천광역시') tr.className = 'row-incheon-total';
+                else tr.className = 'row-grand-total';
             } else if (row.총미조사 === 0) {
-                tr.className = 'row-completed';
+                tr.className = 'row-completed-red';
             }
 
-            const pct = (row.진행율 * 100).toFixed(1);
-            const isFull = row.진행율 >= 1.0;
-            const statusBadge = row.총미조사 === 0 
-                ? '<span class="badge badge-done">조사완료</span>' 
-                : `<span class="badge badge-ing">미조사 ${row.총미조사}</span>`;
+            const pct = (row.진행율 * 100).toFixed(1) + '%';
 
             tr.innerHTML = `
-                <td><strong>${row.시도}</strong></td>
-                <td>${row.시군구 === '합계' ? '<span style="font-weight:700;">소계(합계)</span>' : row.시군구}</td>
+                <td style="text-align: center;">${row.시도}</td>
+                <td style="text-align: center;">${row.시군구}</td>
                 <td style="text-align: right;">${row.필수개수.toLocaleString()}</td>
-                <td style="text-align: right; font-weight: 600;">${row.조사완료.toLocaleString()}</td>
-                <td>
-                    <div class="progress-box">
-                        <div class="progress-bg">
-                            <div class="progress-fill ${isFull ? 'full' : ''}" style="width: ${Math.min(100, pct)}%;"></div>
-                        </div>
-                        <span class="progress-text">${pct}%</span>
-                    </div>
-                </td>
-                <td style="text-align: right; color: ${row.기본미조사 > 0 ? '#fbbf24' : 'inherit'};">${row.기본미조사.toLocaleString()}</td>
-                <td style="text-align: right; color: ${row.가로수미조사 > 0 ? '#38bdf8' : 'inherit'};">${row.가로수미조사.toLocaleString()}</td>
-                <td style="text-align: right; font-weight: 700; color: ${row.총미조사 === 0 ? '#34d399' : '#f87171'};">${row.총미조사.toLocaleString()}</td>
-                <td style="text-align: center;">${statusBadge}</td>
+                <td style="text-align: right;">${row.조사완료.toLocaleString()}</td>
+                <td style="text-align: right;">${pct}</td>
+                <td style="text-align: right;">${row.기본미조사.toLocaleString()}</td>
+                <td style="text-align: right;">${row.가로수미조사.toLocaleString()}</td>
+                <td style="text-align: right;">${row.총미조사.toLocaleString()}</td>
             `;
             tableBody.appendChild(tr);
         });
@@ -940,32 +880,127 @@
         }
 
         const wb = XLSX.utils.book_new();
-        const exportData = [
+        const aoaData = [
             ["시도", "시군구", "필수 개수", "조사완료", "진행율", "기본 미조사 개수", "가로수 미조사 개수", "총 미조사 개수"]
         ];
 
         globalAggRows.forEach(r => {
-            exportData.push([
+            aoaData.push([
                 r.시도,
                 r.시군구,
                 r.필수개수,
                 r.조사완료,
-                `${(r.진행율 * 100).toFixed(1)}%`,
+                r.진행율,
                 r.기본미조사,
                 r.가로수미조사,
                 r.총미조사
             ]);
         });
 
-        const ws = XLSX.utils.aoa_to_sheet(exportData);
+        const ws = XLSX.utils.aoa_to_sheet(aoaData);
+
         ws['!cols'] = [
-            { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
-            { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 15 }
+            { wch: 13 },
+            { wch: 15 },
+            { wch: 13 },
+            { wch: 14 },
+            { wch: 12 },
+            { wch: 18 },
+            { wch: 18 },
+            { wch: 16 }
         ];
 
+        ws['!rows'] = [{ hpt: 28 }];
+        for (let r = 0; r < globalAggRows.length; r++) {
+            ws['!rows'].push({ hpt: 22 });
+        }
+
+        const thinBorder = {
+            top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+            bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+            left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+            right: { style: 'thin', color: { rgb: 'D9D9D9' } }
+        };
+
+        const headerStyle = {
+            fill: { fgColor: { rgb: "2F5597" } },
+            font: { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
+            border: thinBorder
+        };
+
+        for (let c = 0; c < 8; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r: 0, c: c });
+            if (ws[cellRef]) {
+                ws[cellRef].s = headerStyle;
+            }
+        }
+
+        globalAggRows.forEach((r, idx) => {
+            const rowIdx = idx + 1;
+            const rowType = r.rowType;
+            const sido = r.시도;
+            const totalMi = r.총미조사;
+
+            let rowFill = null;
+            let rowFont = { name: "맑은 고딕", sz: 11, bold: false, color: { rgb: "000000" } };
+
+            if (rowType === "grand_total") {
+                rowFill = { fgColor: { rgb: "D9E1F2" } };
+                rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "000000" } };
+            } else if (rowType === "sido_total") {
+                rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "000000" } };
+                if (sido === "경기도") {
+                    rowFill = { fgColor: { rgb: "FCE4D6" } };
+                } else if (sido === "서울특별시") {
+                    rowFill = { fgColor: { rgb: "DDEBF7" } };
+                } else if (sido === "인천광역시") {
+                    rowFill = { fgColor: { rgb: "E8DDF7" } };
+                } else {
+                    rowFill = { fgColor: { rgb: "D9E1F2" } };
+                }
+            } else {
+                if (totalMi === 0) {
+                    rowFont = { name: "맑은 고딕", sz: 11, bold: true, color: { rgb: "FF0000" } };
+                }
+            }
+
+            for (let c = 0; c < 8; c++) {
+                const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: c });
+                if (!ws[cellRef]) continue;
+
+                const cell = ws[cellRef];
+                const cellStyle = {
+                    font: rowFont,
+                    border: thinBorder,
+                    alignment: { vertical: "center" }
+                };
+
+                if (rowFill) {
+                    cellStyle.fill = rowFill;
+                }
+
+                if (c === 0 || c === 1) {
+                    cellStyle.alignment.horizontal = "center";
+                } else if (c === 4) {
+                    cellStyle.alignment.horizontal = "right";
+                    cell.t = 'n';
+                    cell.z = '0.0%';
+                } else {
+                    cellStyle.alignment.horizontal = "right";
+                    cell.t = 'n';
+                    cell.z = '#,##0';
+                }
+
+                cell.s = cellStyle;
+            }
+        });
+
         XLSX.utils.book_append_sheet(wb, ws, "지역별_집계");
+
         const todayStr = new Date().toISOString().slice(0, 10);
         const fileName = `2026 도시 조사결과표(한성안)_지역별집계_${todayStr}.xlsx`;
+
         XLSX.writeFile(wb, fileName);
     });
 </script>
