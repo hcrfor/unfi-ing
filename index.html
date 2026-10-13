@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도시 조사결과 집계 및 미조사 분석 대시보드</title>
+    <!-- 구글 폰트 (Outfit & 프리미엄 본고딕) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- SheetJS (Excel 파싱 및 생성 라이브러리) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(18, 24, 38, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-hover: #0ea5e9;
+            --accent: #818cf8;
+            --accent-purple: #c084fc;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --text-main: #f1f5f9;
+            --text-sub: #94a3b8;
+            --text-dim: #64748b;
+            --glass-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.10) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(192, 132, 252, 0.05) 0px, transparent 60%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* 헤더 영역 */
+        header {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+
+        .badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            font-size: 15px;
+            color: var(--text-sub);
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* 글래스모피즘 카드 기본 스타일 */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--glass-glow);
+            padding: 28px;
+            transition: all 0.3s ease;
+        }
+
+        /* 업로드 구역 */
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .dropzone {
+            width: 100%;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: rgba(56, 189, 248, 0.04);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.2);
+        }
+
+        .dropzone-icon {
+            font-size: 44px;
+            margin-bottom: 14px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .dropzone:hover .dropzone-icon {
+            transform: scale(1.1);
+        }
+
+        .dropzone-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .dropzone-sub {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* 퀵 샘플 로드 버튼 바 */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-quick {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-quick:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-color: var(--primary);
+        }
+
+        /* 파일 정보 & 상태 표시 */
+        .file-info-badge {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .file-info-badge.active {
+            display: flex;
+        }
+
+        .file-name-txt {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* 분석 결과 대시보드 (초기엔 숨김) */
+        #resultDashboard {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* KPI 요약 카드 그리드 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .kpi-card.blue::before { background: var(--primary); }
+        .kpi-card.green::before { background: var(--success); }
+        .kpi-card.purple::before { background: var(--accent-purple); }
+        .kpi-card.yellow::before { background: var(--warning); }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-sub);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* 툴바 & 컨트롤러 */
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #0b0f19;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            width: 220px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+            border: none;
+            color: #0b0f19;
+            padding: 11px 22px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25);
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+        }
+
+        /* 테이블 래퍼 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13.5px;
+        }
+
+        thead th {
+            background: rgba(30, 41, 59, 0.9);
+            color: var(--text-main);
+            font-weight: 700;
+            padding: 14px 16px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            color: var(--text-sub);
+            white-space: nowrap;
+        }
+
+        /* 특수 행 스타일 */
+        tr.row-grand-total {
+            background: rgba(56, 189, 248, 0.12) !important;
+            font-weight: 700;
+        }
+        tr.row-grand-total td {
+            color: #ffffff;
+            border-top: 1px solid rgba(56, 189, 248, 0.3);
+            border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+        }
+
+        tr.row-sido-total {
+            background: rgba(129, 140, 248, 0.08) !important;
+            font-weight: 600;
+        }
+        tr.row-sido-total td {
+            color: #e0e7ff;
+            border-bottom: 1px solid rgba(129, 140, 248, 0.2);
+        }
+
+        /* 완료된 행 하이라이트 (미조사 0건) */
+        tr.row-completed {
+            background: rgba(52, 211, 153, 0.04);
+        }
+        tr.row-completed td:nth-child(2) {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* 진행률 바 */
+        .progress-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 130px;
+        }
+
+        .progress-bg {
+            flex-grow: 1;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+        }
+
+        .progress-fill.full {
+            background: #34d399;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            min-width: 44px;
+            text-align: right;
+        }
+
+        /* 상태 뱃지 */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .badge-done {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+        .badge-ing {
+            background: rgba(251, 191, 36, 0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        /* 로딩 스피너 */
+        .loader-overlay {
+            display: none;
+            text-align: center;
+            padding: 30px 0;
+        }
+
+        .loader {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 14px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 푸터 */
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* 모바일 반응형 */
+        @media (max-width: 768px) {
+            h1 { font-size: 24px; }
+            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .table-toolbar { flex-direction: column; align-items: stretch; }
+            .search-input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 헤더 -->
+    <header>
+        <div class="badge-tag">⚡ 브라우저 실시간 분석 시스템</div>
+        <h1>도시 조사결과 집계 & 미조사 현황 분석</h1>
+        <p>
+            조사결과 엑셀 파일을 업로드하면 수도권 3개 시도(경기도, 서울, 인천)의 표본점과 결과를 대조하여, 
+            시군구별 진행율 및 미조사 현황을 즉시 분석하고 엑셀 파일로 추출합니다.
+        </p>
+    </header>
+
+    <!-- 파일 업로드 카드 -->
+    <div class="glass-card upload-section">
+        <div class="dropzone" id="dropZone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-title">조사결과 엑셀 파일(.xlsx)을 드래그하거나 클릭하여 선택</div>
+            <div class="dropzone-sub">표본점목록 및 조사결과표 시트가 포함된 원본 엑셀 파일을 업로드하세요</div>
+            <input type="file" class="file-input" id="fileInput" accept=".xlsx, .xls">
+        </div>
+
+        <!-- 퀵 액션 (저장소 내 기본 파일 테스트 등) -->
+        <div class="quick-actions">
+            <button class="btn-quick" id="btnLoadDefault">
+                <span>🔄</span> 저장소 최신 데이터 불러오기
+            </button>
+            <button class="btn-quick" id="btnResetData" style="display: none;">
+                <span>✕</span> 분석 초기화
+            </button>
+        </div>
+
+        <!-- 선택 파일 안내 뱃지 -->
+        <div class="file-info-badge" id="fileBadge">
+            <span class="file-name-txt" id="fileNameTxt">파일명.xlsx</span>
+            <span style="font-size: 12px; color: var(--text-sub);" id="fileSizeTxt">0 KB</span>
+        </div>
+
+        <!-- 로딩 애니메이션 -->
+        <div class="loader-overlay" id="loader">
+            <div class="loader"></div>
+            <div style="font-weight: 600; color: var(--text-main);">엑셀 데이터를 실시간 분석 중입니다...</div>
+            <div style="font-size: 12px; color: var(--text-sub); margin-top: 4px;">표본점 대조 및 지역별 미조사 집계 연산 중</div>
+        </div>
+    </div>
+
+    <!-- 분석 결과 대시보드 (업로드 완료 시 표시) -->
+    <div id="resultDashboard">
+        <!-- 1. KPI 요약 카드 -->
+        <div class="kpi-grid">
+            <div class="kpi-card blue">
+                <div class="kpi-label">전체 필수 표본수</div>
+                <div class="kpi-value" id="kpiPilsu">-</div>
+                <div class="kpi-sub">수도권 3개 시도 대상</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-label">조사 완료 개수</div>
+                <div class="kpi-value" id="kpiCompleted">-</div>
+                <div class="kpi-sub">조사가능 판정 표본</div>
+            </div>
+            <div class="kpi-card purple">
+                <div class="kpi-label">전체 진행률</div>
+                <div class="kpi-value" id="kpiRate">0.0%</div>
+                <div class="kpi-sub" id="kpiRateSub">목표 달성률</div>
+            </div>
+            <div class="kpi-card yellow">
+                <div class="kpi-label">총 미조사 개수</div>
+                <div class="kpi-value" id="kpiMiTotal">-</div>
+                <div class="kpi-sub" id="kpiMiDetail">기본 0 / 가로수 0</div>
+            </div>
+        </div>
+
+        <!-- 2. 테이블 뷰 카드 -->
+        <div class="glass-card">
+            <div class="table-toolbar">
+                <!-- 시도 필터 탭 -->
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-sido="ALL">전체</button>
+                    <button class="tab-btn" data-sido="경기도">경기도</button>
+                    <button class="tab-btn" data-sido="서울특별시">서울특별시</button>
+                    <button class="tab-btn" data-sido="인천광역시">인천광역시</button>
+                </div>
+
+                <!-- 검색창 및 다운로드 버튼 -->
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" class="search-input" id="searchDistrict" placeholder="시군구 검색 (예: 수원, 강남)...">
+                    <button class="btn-download" id="btnExportExcel">
+                        <span>📥</span> 결과 엑셀 다운로드
+                    </button>
+                </div>
+            </div>
+
+            <!-- 집계 테이블 -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>시도</th>
+                            <th>시군구</th>
+                            <th style="text-align: right;">필수 개수</th>
+                            <th style="text-align: right;">조사완료</th>
+                            <th style="min-width: 150px;">진행율</th>
+                            <th style="text-align: right;">기본 미조사</th>
+                            <th style="text-align: right;">가로수 미조사</th>
+                            <th style="text-align: right;">총 미조사</th>
+                            <th style="text-align: center;">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 자바스크립트로 동적 행 생성 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer>
+        <p>도시 조사결과 집계 자동화 시스템 | GitHub 저장소: <a href="https://github.com/hcrfor/unfi-ing" target="_blank">hcrfor/unfi-ing</a></p>
+    </footer>
+</div>
+
+<script>
+    // 상수 및 규칙 정의 (app.py 및 generate_mi_list.py와 100% 동일한 비즈니스 로직)
+    const TARGET_SIDOS = ["경기도", "서울특별시", "인천광역시"];
+    const EXCLUDE_SIGUNGUS = new Set([
+        "서초구", "강남구", "강동구", "송파구", "성동구", "중랑구", "노원구", "광진구",
+        "가평군", "남양주시", "양평군"
+    ]);
+
+    // DOM 요소
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileBadge = document.getElementById('fileBadge');
+    const fileNameTxt = document.getElementById('fileNameTxt');
+    const fileSizeTxt = document.getElementById('fileSizeTxt');
+    const loader = document.getElementById('loader');
+    const resultDashboard = document.getElementById('resultDashboard');
+    const btnLoadDefault = document.getElementById('btnLoadDefault');
+    const btnResetData = document.getElementById('btnResetData');
+    const btnExportExcel = document.getElementById('btnExportExcel');
+    const searchDistrict = document.getElementById('searchDistrict');
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tableBody = document.getElementById('tableBody');
+
+    // 전역 상태
+    let globalAggRows = [];
+    let currentFilterSido = "ALL";
+    let currentSearchTerm = "";
+    let rawWorkbook = null;
+
+    // 이벤트 리스너 등록
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    ['dragenter', 'dragover'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    // 기본 파일(저장소 내 최신 엑셀) 불러오기 버튼
+    btnLoadDefault.addEventListener('click', async () => {
+        showLoader(true);
+        try {
+            // GitHub 저장소의 기본 엑셀 파일 로드 시도
+            const defaultUrl = '2026 도시 조사결과표(한성안).xlsx';
+            const response = await fetch(encodeURI(defaultUrl));
+            if (!response.ok) {
+                throw new Error("저장소 내 기본 엑셀 파일을 불러오지 못했습니다. 직접 파일을 올려주세요.");
+            }
+            const blob = await response.blob();
+            const file = new File([blob], "2026 도시 조사결과표(한성안).xlsx", { type: blob.type });
+            handleFile(file);
+        } catch (err) {
+            alert(err.message);
+            showLoader(false);
+        }
+    });
+
+    // 리셋 버튼
+    btnResetData.addEventListener('click', () => {
+        globalAggRows = [];
+        fileBadge.classList.remove('active');
+        resultDashboard.style.display = 'none';
+        btnResetData.style.display = 'none';
+        fileInput.value = '';
+    });
+
+    // 시도 필터 탭 클릭
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilterSido = btn.dataset.sido;
+            renderTable();
+        });
+    });
+
+    // 검색창 입력
+    searchDistrict.addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value.trim().toLowerCase();
+        renderTable();
+    });
+
+    // 로딩 토글
+    function showLoader(show) {
+        loader.style.display = show ? 'block' : 'none';
+    }
+
+    // 파일 크기 포맷터
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 엑셀 파일 처리 메인 함수
+    function handleFile(file) {
+        fileNameTxt.textContent = file.name;
+        fileSizeTxt.textContent = formatBytes(file.size);
+        fileBadge.classList.add('active');
+        btnResetData.style.display = 'inline-flex';
+        showLoader(true);
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                rawWorkbook = workbook;
+                
+                // 데이터 분석 실행
+                processWorkbook(workbook);
+                showLoader(false);
+            } catch (err) {
+                console.error(err);
+                alert("엑셀 파일 파싱 중 오류가 발생했습니다: " + err.message);
+                showLoader(false);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // 유형 그룹 분류 (가로수 vs 기본)
+    function getTypeGroup(val) {
+        const str = String(val || "").trim();
+        return str === "가로수" ? "가로수" : "기본";
+    }
+
+    // 비즈니스 집계 계산
+    function processWorkbook(workbook) {
+        // 시트 확인
+        const sheetList = workbook.Sheets["표본점목록"];
+        const sheetRes = workbook.Sheets["조사결과표"];
+
+        if (!sheetList || !sheetRes) {
+            alert("엑셀 파일에 '표본점목록'과 '조사결과표' 시트가 모두 존재해야 합니다.");
+            return;
+        }
+
+        const rawList = XLSX.utils.sheet_to_json(sheetList);
+        const rawRes = XLSX.utils.sheet_to_json(sheetRes);
+
+        // 1. 대상 필터링: 표본점목록
+        const pilsuList = [];
+        rawList.forEach(row => {
+            const sido = String(row["시도"] || "").trim();
+            const sigungu = String(row["시군구"] || "").trim();
+            const examNo = String(row["조사번호"] || "");
+            
+            if (TARGET_SIDOS.includes(sido) && !EXCLUDE_SIGUNGUS.has(sigungu)) {
+                if (examNo.includes("필수")) {
+                    pilsuList.push({
+                        ...row,
+                        시도: sido,
+                        시군구: sigungu,
+                        유형그룹: getTypeGroup(row["유형"])
+                    });
+                }
+            }
+        });
+
+        // 2. 대상 필터링: 조사결과표
+        const resCompletedList = [];
+        rawRes.forEach(row => {
+            const sido = String(row["광역시도"] || row["시도"] || "").trim();
+            const sigungu = String(row["시군구"] || "").trim();
+            const status = String(row["조사가능불가"] || "").trim();
+
+            if (TARGET_SIDOS.includes(sido) && !EXCLUDE_SIGUNGUS.has(sigungu)) {
+                if (status === "조사가능") {
+                    resCompletedList.push({
+                        ...row,
+                        시도: sido,
+                        시군구: sigungu,
+                        유형그룹: getTypeGroup(row["유형"])
+                    });
+                }
+            }
+        });
+
+        // 3. 시도별 시군구 목록 수집 (가나다순 정렬)
+        const allSigunguBySido = {};
+        TARGET_SIDOS.forEach(sido => {
+            const sigunguSet = new Set();
+            pilsuList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
+            resCompletedList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
+            allSigunguBySido[sido] = Array.from(sigunguSet).sort();
+        });
+
+        // 4. 통계 집계
+        let grandPilsu = 0;
+        let grandRes = 0;
+        let grandMiBase = 0;
+        let grandMiStreet = 0;
+        let grandMiTotal = 0;
+
+        const sidoSummaries = [];
+        const districtRows = [];
+
+        TARGET_SIDOS.forEach(sido => {
+            const sigunguList = allSigunguBySido[sido] || [];
+            const sidoPilsu = pilsuList.filter(r => r["시도"] === sido);
+            const sidoRes = resCompletedList.filter(r => r["시도"] === sido);
+
+            let sidoP = 0, sidoR = 0, sidoMb = 0, sidoMs = 0, sidoM = 0;
+
+            sigunguList.forEach(sigungu => {
+                const pSub = sidoPilsu.filter(r => r["시군구"] === sigungu);
+                const rSub = sidoRes.filter(r => r["시군구"] === sigungu);
+
+                const pCnt = pSub.length;
+                const rCnt = rSub.length;
+                const rate = pCnt > 0 ? (rCnt / pCnt) : 0;
+
+                const pBase = pSub.filter(r => r["유형그룹"] === "기본").length;
+                const rBase = rSub.filter(r => r["유형그룹"] === "기본").length;
+                const miBase = Math.max(0, pBase - rBase);
+
+                const pStreet = pSub.filter(r => r["유형그룹"] === "가로수").length;
+                const rStreet = rSub.filter(r => r["유형그룹"] === "가로수").length;
+                const miStreet = Math.max(0, pStreet - rStreet);
+
+                const miCnt = miBase + miStreet;
+
+                sidoP += pCnt;
+                sidoR += rCnt;
+                sidoMb += miBase;
+                sidoMs += miStreet;
+                sidoM += miCnt;
+
+                districtRows.push({
+                    시도: sido,
+                    시군구: sigungu,
+                    필수개수: pCnt,
+                    조사완료: rCnt,
+                    진행율: rate,
+                    기본미조사: miBase,
+                    가로수미조사: miStreet,
+                    총미조사: miCnt,
+                    rowType: 'district'
+                });
+            });
+
+            const sidoRate = sidoP > 0 ? (sidoR / sidoP) : 0;
+            sidoSummaries.push({
+                시도: sido,
+                시군구: '합계',
+                필수개수: sidoP,
+                조사완료: sidoR,
+                진행율: sidoRate,
+                기본미조사: sidoMb,
+                가로수미조사: sidoMs,
+                총미조사: sidoM,
+                rowType: 'sido_total'
+            });
+
+            grandPilsu += sidoP;
+            grandRes += sidoR;
+            grandMiBase += sidoMb;
+            grandMiStreet += sidoMs;
+            grandMiTotal += sidoM;
+        });
+
+        const grandRate = grandPilsu > 0 ? (grandRes / grandPilsu) : 0;
+        const grandTotalRow = {
+            시도: '전체',
+            시군구: '합계',
+            필수개수: grandPilsu,
+            조사완료: grandRes,
+            진행율: grandRate,
+            기본미조사: grandMiBase,
+            가로수미조사: grandMiStreet,
+            총미조사: grandMiTotal,
+            rowType: 'grand_total'
+        };
+
+        globalAggRows = [grandTotalRow, ...sidoSummaries, ...districtRows];
+
+        // 대시보드 KPI 렌더링
+        document.getElementById('kpiPilsu').textContent = grandPilsu.toLocaleString() + ' 개';
+        document.getElementById('kpiCompleted').textContent = grandRes.toLocaleString() + ' 개';
+        document.getElementById('kpiRate').textContent = (grandRate * 100).toFixed(1) + '%';
+        document.getElementById('kpiRateSub').textContent = `잔여 미조사 ${grandMiTotal}개`;
+        document.getElementById('kpiMiTotal').textContent = grandMiTotal.toLocaleString() + ' 개';
+        document.getElementById('kpiMiDetail').textContent = `기본 ${grandMiBase}개 / 가로수 ${grandMiStreet}개`;
+
+        // 결과 영역 표시 및 테이블 그리기
+        resultDashboard.style.display = 'flex';
+        renderTable();
+    }
+
+    // 테이블 렌더링 함수
+    function renderTable() {
+        tableBody.innerHTML = '';
+
+        // 필터링 적용
+        let filtered = globalAggRows.filter(row => {
+            // 검색어 필터
+            if (currentSearchTerm) {
+                const matchSearch = row.시도.toLowerCase().includes(currentSearchTerm) ||
+                                    row.시군구.toLowerCase().includes(currentSearchTerm);
+                if (!matchSearch) return false;
+            }
+
+            // 시도 탭 필터
+            if (currentFilterSido !== "ALL") {
+                if (row.rowType === "grand_total") return false; // 특정 시도 선택 시 전체 합계 숨김
+                if (row.시도 !== currentFilterSido) return false;
+            }
+            return true;
+        });
+
+        filtered.forEach(row => {
+            const tr = document.createElement('tr');
+            
+            // 스타일 클래스 부여
+            if (row.rowType === 'grand_total') {
+                tr.className = 'row-grand-total';
+            } else if (row.rowType === 'sido_total') {
+                tr.className = 'row-sido-total';
+            } else if (row.총미조사 === 0) {
+                tr.className = 'row-completed';
+            }
+
+            const pct = (row.진행율 * 100).toFixed(1);
+            const isFull = row.진행율 >= 1.0;
+            const statusBadge = row.총미조사 === 0 
+                ? '<span class="badge badge-done">조사완료</span>' 
+                : `<span class="badge badge-ing">미조사 ${row.총미조사}</span>`;
+
+            tr.innerHTML = `
+                <td><strong>${row.시도}</strong></td>
+                <td>${row.시군구 === '합계' ? '<span style="font-weight:700;">소계(합계)</span>' : row.시군구}</td>
+                <td style="text-align: right;">${row.필수개수.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: 600;">${row.조사완료.toLocaleString()}</td>
+                <td>
+                    <div class="progress-box">
+                        <div class="progress-bg">
+                            <div class="progress-fill ${isFull ? 'full' : ''}" style="width: ${Math.min(100, pct)}%;"></div>
+                        </div>
+                        <span class="progress-text">${pct}%</span>
+                    </div>
+                </td>
+                <td style="text-align: right; color: ${row.기본미조사 > 0 ? '#fbbf24' : 'inherit'};">${row.기본미조사.toLocaleString()}</td>
+                <td style="text-align: right; color: ${row.가로수미조사 > 0 ? '#38bdf8' : 'inherit'};">${row.가로수미조사.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: 700; color: ${row.총미조사 === 0 ? '#34d399' : '#f87171'};">${row.총미조사.toLocaleString()}</td>
+                <td style="text-align: center;">${statusBadge}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    // 엑셀 다운로드 (SheetJS로 즉시 생성)
+    btnExportExcel.addEventListener('click', () => {
+        if (!globalAggRows || globalAggRows.length === 0) {
+            alert("다운로드할 분석 결과가 없습니다.");
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        
+        // 엑셀 내보내기용 데이터 가공 (8개 컬럼)
+        const exportData = [
+            ["시도", "시군구", "필수 개수", "조사완료", "진행율", "기본 미조사 개수", "가로수 미조사 개수", "총 미조사 개수"]
+        ];
+
+        globalAggRows.forEach(r => {
+            exportData.push([
+                r.시도,
+                r.시군구,
+                r.필수개수,
+                r.조사완료,
+                `${(r.진행율 * 100).toFixed(1)}%`,
+                r.기본미조사,
+                r.가로수미조사,
+                r.총미조사
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+        // 컬럼 너비 설정
+        ws['!cols'] = [
+            { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 15 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "지역별_집계");
+
+        // 오늘 날짜 문자열
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const fileName = `2026 도시 조사결과표(한성안)_지역별집계_${todayStr}.xlsx`;
+
+        XLSX.writeFile(wb, fileName);
+    });
+</script>
+
+</body>
+</html>

@@ -1,24 +1,33 @@
+<!-- c:\Users\han\development\antigraviy\unfi-ing\templates\index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>지역별 조사 집계 추출기</title>
+    <title>도시 조사결과 집계 및 미조사 분석 대시보드</title>
+    <!-- 구글 폰트 (Outfit & 프리미엄 본고딕) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- SheetJS (Excel 파싱 및 생성 라이브러리) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-highlight: rgba(255, 255, 255, 0.15);
-            --primary: #06b6d4;
-            --primary-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-            --accent: #d946ef;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --shadow-neon: 0 0 20px rgba(6, 182, 212, 0.15);
+            --bg-color: #0b0f19;
+            --card-bg: rgba(18, 24, 38, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-hover: #0ea5e9;
+            --accent: #818cf8;
+            --accent-purple: #c084fc;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --text-main: #f1f5f9;
+            --text-sub: #94a3b8;
+            --text-dim: #64748b;
+            --glass-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
         * {
@@ -28,534 +37,938 @@
         }
 
         body {
-            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-            background: var(--bg-gradient);
+            font-family: 'Outfit', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.10) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(192, 132, 252, 0.05) 0px, transparent 60%);
+            background-attachment: fixed;
             color: var(--text-main);
             min-height: 100vh;
+            padding: 40px 20px 80px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Ambient background glow points */
-        body::before, body::after {
-            content: '';
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            filter: blur(120px);
-            z-index: 0;
-            opacity: 0.3;
-        }
-
-        body::before {
-            background: var(--primary);
-            top: 10%;
-            left: 15%;
-            animation: float-slow 20s infinite alternate;
-        }
-
-        body::after {
-            background: var(--accent);
-            bottom: 10%;
-            right: 15%;
-            animation: float-slow 25s infinite alternate-reverse;
-        }
-
-        @keyframes float-slow {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(40px, 40px) scale(1.1); }
         }
 
         .container {
-            z-index: 10;
             width: 100%;
-            max-width: 520px;
-            padding: 20px;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
         }
 
-        /* Glassmorphic Card */
-        .card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 
-                        inset 0 1px 0 var(--glass-highlight);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .card:hover {
-            border-color: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 
-                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        .header {
+        /* 헤더 영역 */
+        header {
             text-align: center;
-            margin-bottom: 30px;
+            padding: 20px 0 10px;
         }
 
-        .header h1 {
-            font-size: 28px;
+        .badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: 32px;
             font-weight: 800;
             letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
-        .header p {
-            font-size: 14px;
-            color: var(--text-muted);
-            line-height: 1.5;
+        header p {
+            font-size: 15px;
+            color: var(--text-sub);
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.6;
         }
 
-        /* Drag & Drop Zone */
+        /* 글래스모피즘 카드 기본 스타일 */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--glass-glow);
+            padding: 28px;
+            transition: all 0.3s ease;
+        }
+
+        /* 업로드 구역 */
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
         .dropzone {
+            width: 100%;
             border: 2px dashed rgba(255, 255, 255, 0.15);
             border-radius: 16px;
             padding: 40px 20px;
-            text-align: center;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            background: rgba(255, 255, 255, 0.01);
+            transition: all 0.25s ease;
+            background: rgba(255, 255, 255, 0.02);
             position: relative;
-            overflow: hidden;
         }
 
         .dropzone:hover, .dropzone.dragover {
             border-color: var(--primary);
-            background: rgba(6, 182, 212, 0.03);
-            box-shadow: var(--shadow-neon);
+            background: rgba(56, 189, 248, 0.04);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.2);
         }
 
         .dropzone-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+            font-size: 44px;
+            margin-bottom: 14px;
             display: inline-block;
-            transition: transform 0.3s ease;
+            transition: transform 0.2s;
         }
 
         .dropzone:hover .dropzone-icon {
-            transform: translateY(-4px);
+            transform: scale(1.1);
         }
 
-        .dropzone-text {
-            font-size: 15px;
-            font-weight: 600;
+        .dropzone-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
             margin-bottom: 6px;
         }
 
-        .dropzone-subtext {
-            font-size: 12px;
-            color: var(--text-muted);
+        .dropzone-sub {
+            font-size: 13px;
+            color: var(--text-sub);
         }
 
         .file-input {
             display: none;
         }
 
-        /* File Selected State */
-        .file-info {
-            display: none;
+        /* 퀵 샘플 로드 버튼 바 */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-quick {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 14px 18px;
-            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
             align-items: center;
-            animation: fadeIn 0.4s ease forwards;
+            gap: 6px;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+        .btn-quick:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-color: var(--primary);
         }
 
-        .file-info-icon {
-            font-size: 24px;
-            margin-right: 12px;
+        /* 파일 정보 & 상태 표시 */
+        .file-info-badge {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .file-info-badge.active {
+            display: flex;
+        }
+
+        .file-name-txt {
+            font-size: 14px;
+            font-weight: 600;
             color: var(--primary);
         }
 
-        .file-info-details {
-            flex-grow: 1;
+        /* 분석 결과 대시보드 */
+        #resultDashboard {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* KPI 요약 카드 그리드 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px 22px;
+            position: relative;
             overflow: hidden;
         }
 
-        .file-name {
-            font-size: 14px;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
         }
 
-        .file-size {
+        .kpi-card.blue::before { background: var(--primary); }
+        .kpi-card.green::before { background: var(--success); }
+        .kpi-card.purple::before { background: var(--accent-purple); }
+        .kpi-card.yellow::before { background: var(--warning); }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-sub);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-sub {
             font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 2px;
+            color: var(--text-dim);
+            margin-top: 4px;
         }
 
-        .file-remove {
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--text-muted);
+        /* 툴바 & 컨트롤러 */
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.25);
             padding: 4px;
-            transition: color 0.2s ease;
+            border-radius: 12px;
         }
 
-        .file-remove:hover {
-            color: #ef4444;
-        }
-
-        /* Submit Button */
-        .btn-submit {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            color: var(--text-muted);
-            font-size: 16px;
-            font-weight: 700;
-            padding: 16px;
-            border-radius: 14px;
-            margin-top: 24px;
-            cursor: not-allowed;
-            transition: all 0.3s ease;
-        }
-
-        .btn-submit.active {
-            background: var(--primary-gradient);
-            border-color: transparent;
-            color: white;
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 10px 20px rgba(6, 182, 212, 0.25);
+            transition: all 0.2s;
         }
 
-        .btn-submit.active:hover {
+        .tab-btn.active {
+            background: var(--primary);
+            color: #0b0f19;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            width: 220px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+            border: none;
+            color: #0b0f19;
+            padding: 11px 22px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25);
+        }
+
+        .btn-download:hover {
             transform: translateY(-2px);
-            box-shadow: 0 15px 25px rgba(6, 182, 212, 0.35);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
         }
 
-        .btn-submit.active:active {
-            transform: translateY(0);
+        /* 테이블 래퍼 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.15);
         }
 
-        /* Processing State */
-        .processing-wrapper {
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13.5px;
+        }
+
+        thead th {
+            background: rgba(30, 41, 59, 0.9);
+            color: var(--text-main);
+            font-weight: 700;
+            padding: 14px 16px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            color: var(--text-sub);
+            white-space: nowrap;
+        }
+
+        /* 특수 행 스타일 */
+        tr.row-grand-total {
+            background: rgba(56, 189, 248, 0.12) !important;
+            font-weight: 700;
+        }
+        tr.row-grand-total td {
+            color: #ffffff;
+            border-top: 1px solid rgba(56, 189, 248, 0.3);
+            border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+        }
+
+        tr.row-sido-total {
+            background: rgba(129, 140, 248, 0.08) !important;
+            font-weight: 600;
+        }
+        tr.row-sido-total td {
+            color: #e0e7ff;
+            border-bottom: 1px solid rgba(129, 140, 248, 0.2);
+        }
+
+        tr.row-completed {
+            background: rgba(52, 211, 153, 0.04);
+        }
+        tr.row-completed td:nth-child(2) {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* 진행률 바 */
+        .progress-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 130px;
+        }
+
+        .progress-bg {
+            flex-grow: 1;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+        }
+
+        .progress-fill.full {
+            background: #34d399;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            min-width: 44px;
+            text-align: right;
+        }
+
+        /* 상태 뱃지 */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .badge-done {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+        .badge-ing {
+            background: rgba(251, 191, 36, 0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        /* 로딩 스피너 */
+        .loader-overlay {
             display: none;
             text-align: center;
-            padding: 20px 0;
-            animation: fadeIn 0.4s ease forwards;
+            padding: 30px 0;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.05);
-            border-top: 3px solid var(--primary);
+        .loader {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-bottom: 20px;
+            border-top-color: var(--primary);
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 14px;
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
 
-        .status-text {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .status-subtext {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        /* Success & Failure States */
-        .success-wrapper {
-            display: none;
+        /* 푸터 */
+        footer {
+            margin-top: 40px;
             text-align: center;
-            padding: 20px 0;
-            animation: fadeIn 0.4s ease forwards;
+            color: var(--text-dim);
+            font-size: 12px;
         }
 
-        .success-icon {
-            font-size: 60px;
-            color: #10b981;
-            margin-bottom: 20px;
-            animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
         }
 
-        @keyframes scaleUp {
-            from { transform: scale(0.6); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .reset-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            font-size: 14px;
-            font-weight: 600;
-            padding: 10px 20px;
-            border-radius: 10px;
-            margin-top: 24px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .reset-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .error-message {
-            display: none;
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border-radius: 12px;
-            padding: 14px 18px;
-            margin-top: 20px;
-            font-size: 13px;
-            line-height: 1.4;
-            text-align: left;
-            animation: fadeIn 0.4s ease forwards;
+        @media (max-width: 768px) {
+            h1 { font-size: 24px; }
+            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .table-toolbar { flex-direction: column; align-items: stretch; }
+            .search-input { width: 100%; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="card" id="cardContainer">
-            <!-- 1. Upload Form Panel -->
-            <div id="uploadPanel">
-                <div class="header">
-                    <h1>지역별 조사 집계 추출기 📊</h1>
-                    <p>2026 도시 조사결과표(한성안).xlsx 파일을 업로드하면<br>필수 개수와 조사가능 개수를 비교한 지역별 집계 엑셀을 자동 생성합니다.</p>
+<div class="container">
+    <header>
+        <div class="badge-tag">⚡ 실시간 분석 대시보드</div>
+        <h1>도시 조사결과 집계 & 미조사 현황 분석</h1>
+        <p>
+            조사결과 엑셀 파일을 업로드하면 수도권 3개 시도(경기도, 서울, 인천)의 표본점과 결과를 대조하여, 
+            시군구별 진행율 및 미조사 현황을 즉시 분석하고 엑셀 파일로 추출합니다.
+        </p>
+    </header>
+
+    <div class="glass-card upload-section">
+        <div class="dropzone" id="dropZone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-title">조사결과 엑셀 파일(.xlsx)을 드래그하거나 클릭하여 선택</div>
+            <div class="dropzone-sub">표본점목록 및 조사결과표 시트가 포함된 원본 엑셀 파일을 업로드하세요</div>
+            <input type="file" class="file-input" id="fileInput" accept=".xlsx, .xls">
+        </div>
+
+        <div class="quick-actions">
+            <button class="btn-quick" id="btnResetData" style="display: none;">
+                <span>✕</span> 분석 초기화
+            </button>
+        </div>
+
+        <div class="file-info-badge" id="fileBadge">
+            <span class="file-name-txt" id="fileNameTxt">파일명.xlsx</span>
+            <span style="font-size: 12px; color: var(--text-sub);" id="fileSizeTxt">0 KB</span>
+        </div>
+
+        <div class="loader-overlay" id="loader">
+            <div class="loader"></div>
+            <div style="font-weight: 600; color: var(--text-main);">엑셀 데이터를 실시간 분석 중입니다...</div>
+            <div style="font-size: 12px; color: var(--text-sub); margin-top: 4px;">표본점 대조 및 지역별 미조사 집계 연산 중</div>
+        </div>
+    </div>
+
+    <div id="resultDashboard">
+        <div class="kpi-grid">
+            <div class="kpi-card blue">
+                <div class="kpi-label">전체 필수 표본수</div>
+                <div class="kpi-value" id="kpiPilsu">-</div>
+                <div class="kpi-sub">수도권 3개 시도 대상</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-label">조사 완료 개수</div>
+                <div class="kpi-value" id="kpiCompleted">-</div>
+                <div class="kpi-sub">조사가능 판정 표본</div>
+            </div>
+            <div class="kpi-card purple">
+                <div class="kpi-label">전체 진행률</div>
+                <div class="kpi-value" id="kpiRate">0.0%</div>
+                <div class="kpi-sub" id="kpiRateSub">목표 달성률</div>
+            </div>
+            <div class="kpi-card yellow">
+                <div class="kpi-label">총 미조사 개수</div>
+                <div class="kpi-value" id="kpiMiTotal">-</div>
+                <div class="kpi-sub" id="kpiMiDetail">기본 0 / 가로수 0</div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="table-toolbar">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-sido="ALL">전체</button>
+                    <button class="tab-btn" data-sido="경기도">경기도</button>
+                    <button class="tab-btn" data-sido="서울특별시">서울특별시</button>
+                    <button class="tab-btn" data-sido="인천광역시">인천광역시</button>
                 </div>
 
-                <div class="dropzone" id="dropZone">
-                    <span class="dropzone-icon">📥</span>
-                    <div class="dropzone-text">여기에 엑셀 파일을 끌어다 놓으세요</div>
-                    <div class="dropzone-subtext">또는 클릭해서 파일 선택</div>
-                    <input type="file" class="file-input" id="fileInput" accept=".xlsx, .xls">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" class="search-input" id="searchDistrict" placeholder="시군구 검색...">
+                    <button class="btn-download" id="btnExportExcel">
+                        <span>📥</span> 결과 엑셀 다운로드
+                    </button>
                 </div>
-
-                <div class="file-info" id="fileInfo">
-                    <span class="file-info-icon">📄</span>
-                    <div class="file-info-details">
-                        <div class="file-name" id="fileName">파일명.xlsx</div>
-                        <div class="file-size" id="fileSize">0 KB</div>
-                    </div>
-                    <span class="file-remove" id="fileRemove">✕</span>
-                </div>
-
-                <button class="btn-submit" id="btnSubmit" disabled>미조사 목록 추출하기</button>
-                <div class="error-message" id="errorMessage">오류 발생 메시지</div>
             </div>
 
-            <!-- 2. Processing Screen Panel -->
-            <div class="processing-wrapper" id="processingPanel">
-                <div class="spinner"></div>
-                <div class="status-text">엑셀 파일 분석 중</div>
-                <div class="status-subtext">표본배치 및 조사결과 정합성 결합 연산을 진행하고 있습니다. 잠시만 기다려 주세요.</div>
-            </div>
-
-            <!-- 3. Success Screen Panel -->
-            <div class="success-wrapper" id="successPanel">
-                <div class="success-icon">✓</div>
-                <div class="status-text">추출 완료!</div>
-                <div class="status-subtext">미조사 목록 파일이 생성되어 브라우저에서 다운로드가 시작되었습니다.</div>
-                <button class="reset-btn" id="btnReset">처음으로</button>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>시도</th>
+                            <th>시군구</th>
+                            <th style="text-align: right;">필수 개수</th>
+                            <th style="text-align: right;">조사완료</th>
+                            <th style="min-width: 150px;">진행율</th>
+                            <th style="text-align: right;">기본 미조사</th>
+                            <th style="text-align: right;">가로수 미조사</th>
+                            <th style="text-align: right;">총 미조사</th>
+                            <th style="text-align: center;">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const fileRemove = document.getElementById('fileRemove');
-        const btnSubmit = document.getElementById('btnSubmit');
-        const uploadPanel = document.getElementById('uploadPanel');
-        const processingPanel = document.getElementById('processingPanel');
-        const successPanel = document.getElementById('successPanel');
-        const btnReset = document.getElementById('btnReset');
-        const errorMessage = document.getElementById('errorMessage');
+    <footer>
+        <p>도시 조사결과 집계 자동화 시스템 | Local Flask Web Service</p>
+    </footer>
+</div>
 
-        let selectedFile = null;
+<script>
+    const TARGET_SIDOS = ["경기도", "서울특별시", "인천광역시"];
+    const EXCLUDE_SIGUNGUS = new Set([
+        "서초구", "강남구", "강동구", "송파구", "성동구", "중랑구", "노원구", "광진구",
+        "가평군", "남양주시", "양평군"
+    ]);
 
-        // Click Dropzone to open file picker
-        dropZone.addEventListener('click', () => {
-            fileInput.click();
-        });
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileBadge = document.getElementById('fileBadge');
+    const fileNameTxt = document.getElementById('fileNameTxt');
+    const fileSizeTxt = document.getElementById('fileSizeTxt');
+    const loader = document.getElementById('loader');
+    const resultDashboard = document.getElementById('resultDashboard');
+    const btnResetData = document.getElementById('btnResetData');
+    const btnExportExcel = document.getElementById('btnExportExcel');
+    const searchDistrict = document.getElementById('searchDistrict');
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tableBody = document.getElementById('tableBody');
 
-        // Handle file selection
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
+    let globalAggRows = [];
+    let currentFilterSido = "ALL";
+    let currentSearchTerm = "";
 
-        // Drag and drop event listeners
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        }
+    });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight(e) {
+    ['dragenter', 'dragover'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
             e.preventDefault();
             dropZone.classList.add('dragover');
-        }
+        });
+    });
 
-        function unhighlight(e) {
+    ['dragleave', 'drop'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    btnResetData.addEventListener('click', () => {
+        globalAggRows = [];
+        fileBadge.classList.remove('active');
+        resultDashboard.style.display = 'none';
+        btnResetData.style.display = 'none';
+        fileInput.value = '';
+    });
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilterSido = btn.dataset.sido;
+            renderTable();
+        });
+    });
+
+    searchDistrict.addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value.trim().toLowerCase();
+        renderTable();
+    });
+
+    function showLoader(show) {
+        loader.style.display = show ? 'block' : 'none';
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function handleFile(file) {
+        fileNameTxt.textContent = file.name;
+        fileSizeTxt.textContent = formatBytes(file.size);
+        fileBadge.classList.add('active');
+        btnResetData.style.display = 'inline-flex';
+        showLoader(true);
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                processWorkbook(workbook);
+                showLoader(false);
+            } catch (err) {
+                console.error(err);
+                alert("엑셀 파일 파싱 중 오류가 발생했습니다: " + err.message);
+                showLoader(false);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function getTypeGroup(val) {
+        const str = String(val || "").trim();
+        return str === "가로수" ? "가로수" : "기본";
+    }
+
+    function processWorkbook(workbook) {
+        const sheetList = workbook.Sheets["표본점목록"];
+        const sheetRes = workbook.Sheets["조사결과표"];
+
+        if (!sheetList || !sheetRes) {
+            alert("엑셀 파일에 '표본점목록'과 '조사결과표' 시트가 모두 존재해야 합니다.");
+            return;
         }
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles(files);
+        const rawList = XLSX.utils.sheet_to_json(sheetList);
+        const rawRes = XLSX.utils.sheet_to_json(sheetRes);
+
+        const pilsuList = [];
+        rawList.forEach(row => {
+            const sido = String(row["시도"] || "").trim();
+            const sigungu = String(row["시군구"] || "").trim();
+            const examNo = String(row["조사번호"] || "");
+            
+            if (TARGET_SIDOS.includes(sido) && !EXCLUDE_SIGUNGUS.has(sigungu)) {
+                if (examNo.includes("필수")) {
+                    pilsuList.push({
+                        ...row,
+                        시도: sido,
+                        시군구: sigungu,
+                        유형그룹: getTypeGroup(row["유형"])
+                    });
+                }
+            }
         });
 
-        // Process selected file
-        function handleFiles(files) {
-            if (files.length === 0) return;
-            const file = files[0];
-            
-            // Check extension
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (ext !== 'xlsx' && ext !== 'xls') {
-                showError("Excel 파일 (.xlsx, .xls)만 업로드할 수 있습니다.");
-                removeFile();
-                return;
+        const resCompletedList = [];
+        rawRes.forEach(row => {
+            const sido = String(row["광역시도"] || row["시도"] || "").trim();
+            const sigungu = String(row["시군구"] || "").trim();
+            const status = String(row["조사가능불가"] || "").trim();
+
+            if (TARGET_SIDOS.includes(sido) && !EXCLUDE_SIGUNGUS.has(sigungu)) {
+                if (status === "조사가능") {
+                    resCompletedList.push({
+                        ...row,
+                        시도: sido,
+                        시군구: sigungu,
+                        유형그룹: getTypeGroup(row["유형"])
+                    });
+                }
+            }
+        });
+
+        const allSigunguBySido = {};
+        TARGET_SIDOS.forEach(sido => {
+            const sigunguSet = new Set();
+            pilsuList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
+            resCompletedList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
+            allSigunguBySido[sido] = Array.from(sigunguSet).sort();
+        });
+
+        let grandPilsu = 0, grandRes = 0, grandMiBase = 0, grandMiStreet = 0, grandMiTotal = 0;
+        const sidoSummaries = [];
+        const districtRows = [];
+
+        TARGET_SIDOS.forEach(sido => {
+            const sigunguList = allSigunguBySido[sido] || [];
+            const sidoPilsu = pilsuList.filter(r => r["시도"] === sido);
+            const sidoRes = resCompletedList.filter(r => r["시도"] === sido);
+
+            let sidoP = 0, sidoR = 0, sidoMb = 0, sidoMs = 0, sidoM = 0;
+
+            sigunguList.forEach(sigungu => {
+                const pSub = sidoPilsu.filter(r => r["시군구"] === sigungu);
+                const rSub = sidoRes.filter(r => r["시군구"] === sigungu);
+
+                const pCnt = pSub.length;
+                const rCnt = rSub.length;
+                const rate = pCnt > 0 ? (rCnt / pCnt) : 0;
+
+                const pBase = pSub.filter(r => r["유형그룹"] === "기본").length;
+                const rBase = rSub.filter(r => r["유형그룹"] === "기본").length;
+                const miBase = Math.max(0, pBase - rBase);
+
+                const pStreet = pSub.filter(r => r["유형그룹"] === "가로수").length;
+                const rStreet = rSub.filter(r => r["유형그룹"] === "가로수").length;
+                const miStreet = Math.max(0, pStreet - rStreet);
+
+                const miCnt = miBase + miStreet;
+
+                sidoP += pCnt;
+                sidoR += rCnt;
+                sidoMb += miBase;
+                sidoMs += miStreet;
+                sidoM += miCnt;
+
+                districtRows.push({
+                    시도: sido,
+                    시군구: sigungu,
+                    필수개수: pCnt,
+                    조사완료: rCnt,
+                    진행율: rate,
+                    기본미조사: miBase,
+                    가로수미조사: miStreet,
+                    총미조사: miCnt,
+                    rowType: 'district'
+                });
+            });
+
+            const sidoRate = sidoP > 0 ? (sidoR / sidoP) : 0;
+            sidoSummaries.push({
+                시도: sido,
+                시군구: '합계',
+                필수개수: sidoP,
+                조사완료: sidoR,
+                진행율: sidoRate,
+                기본미조사: sidoMb,
+                가로수미조사: sidoMs,
+                총미조사: sidoM,
+                rowType: 'sido_total'
+            });
+
+            grandPilsu += sidoP;
+            grandRes += sidoR;
+            grandMiBase += sidoMb;
+            grandMiStreet += sidoMs;
+            grandMiTotal += sidoM;
+        });
+
+        const grandRate = grandPilsu > 0 ? (grandRes / grandPilsu) : 0;
+        const grandTotalRow = {
+            시도: '전체',
+            시군구: '합계',
+            필수개수: grandPilsu,
+            조사완료: grandRes,
+            진행율: grandRate,
+            기본미조사: grandMiBase,
+            가로수미조사: grandMiStreet,
+            총미조사: grandMiTotal,
+            rowType: 'grand_total'
+        };
+
+        globalAggRows = [grandTotalRow, ...sidoSummaries, ...districtRows];
+
+        document.getElementById('kpiPilsu').textContent = grandPilsu.toLocaleString() + ' 개';
+        document.getElementById('kpiCompleted').textContent = grandRes.toLocaleString() + ' 개';
+        document.getElementById('kpiRate').textContent = (grandRate * 100).toFixed(1) + '%';
+        document.getElementById('kpiRateSub').textContent = `잔여 미조사 ${grandMiTotal}개`;
+        document.getElementById('kpiMiTotal').textContent = grandMiTotal.toLocaleString() + ' 개';
+        document.getElementById('kpiMiDetail').textContent = `기본 ${grandMiBase}개 / 가로수 ${grandMiStreet}개`;
+
+        resultDashboard.style.display = 'flex';
+        renderTable();
+    }
+
+    function renderTable() {
+        tableBody.innerHTML = '';
+
+        let filtered = globalAggRows.filter(row => {
+            if (currentSearchTerm) {
+                const matchSearch = row.시도.toLowerCase().includes(currentSearchTerm) ||
+                                    row.시군구.toLowerCase().includes(currentSearchTerm);
+                if (!matchSearch) return false;
             }
 
-            selectedFile = file;
-            fileName.textContent = file.name;
-            fileSize.textContent = formatBytes(file.size);
-            
-            // Show info panel
-            fileInfo.style.display = 'flex';
-            errorMessage.style.display = 'none';
-            
-            // Enable button
-            btnSubmit.classList.add('active');
-            btnSubmit.removeAttribute('disabled');
-        }
-
-        // Remove selected file
-        fileRemove.addEventListener('click', (e) => {
-            e.stopPropagation();
-            removeFile();
+            if (currentFilterSido !== "ALL") {
+                if (row.rowType === "grand_total") return false;
+                if (row.시도 !== currentFilterSido) return false;
+            }
+            return true;
         });
 
-        function removeFile() {
-            selectedFile = null;
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            btnSubmit.classList.remove('active');
-            btnSubmit.setAttribute('disabled', 'true');
+        filtered.forEach(row => {
+            const tr = document.createElement('tr');
+            if (row.rowType === 'grand_total') {
+                tr.className = 'row-grand-total';
+            } else if (row.rowType === 'sido_total') {
+                tr.className = 'row-sido-total';
+            } else if (row.총미조사 === 0) {
+                tr.className = 'row-completed';
+            }
+
+            const pct = (row.진행율 * 100).toFixed(1);
+            const isFull = row.진행율 >= 1.0;
+            const statusBadge = row.총미조사 === 0 
+                ? '<span class="badge badge-done">조사완료</span>' 
+                : `<span class="badge badge-ing">미조사 ${row.총미조사}</span>`;
+
+            tr.innerHTML = `
+                <td><strong>${row.시도}</strong></td>
+                <td>${row.시군구 === '합계' ? '<span style="font-weight:700;">소계(합계)</span>' : row.시군구}</td>
+                <td style="text-align: right;">${row.필수개수.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: 600;">${row.조사완료.toLocaleString()}</td>
+                <td>
+                    <div class="progress-box">
+                        <div class="progress-bg">
+                            <div class="progress-fill ${isFull ? 'full' : ''}" style="width: ${Math.min(100, pct)}%;"></div>
+                        </div>
+                        <span class="progress-text">${pct}%</span>
+                    </div>
+                </td>
+                <td style="text-align: right; color: ${row.기본미조사 > 0 ? '#fbbf24' : 'inherit'};">${row.기본미조사.toLocaleString()}</td>
+                <td style="text-align: right; color: ${row.가로수미조사 > 0 ? '#38bdf8' : 'inherit'};">${row.가로수미조사.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: 700; color: ${row.총미조사 === 0 ? '#34d399' : '#f87171'};">${row.총미조사.toLocaleString()}</td>
+                <td style="text-align: center;">${statusBadge}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    btnExportExcel.addEventListener('click', () => {
+        if (!globalAggRows || globalAggRows.length === 0) {
+            alert("다운로드할 분석 결과가 없습니다.");
+            return;
         }
 
-        // Show Error helper
-        function showError(msg) {
-            errorMessage.textContent = msg;
-            errorMessage.style.display = 'block';
-        }
+        const wb = XLSX.utils.book_new();
+        const exportData = [
+            ["시도", "시군구", "필수 개수", "조사완료", "진행율", "기본 미조사 개수", "가로수 미조사 개수", "총 미조사 개수"]
+        ];
 
-        // Format bytes helper
-        function formatBytes(bytes, decimals = 2) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-        }
-
-        // Submit action
-        btnSubmit.addEventListener('click', () => {
-            if (!selectedFile) return;
-
-            // Shift panels
-            uploadPanel.style.display = 'none';
-            processingPanel.style.display = 'block';
-
-            // Create form data
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-
-            // Fetch request
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(async response => {
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error || "파일 처리 중 예기치 못한 오류가 발생했습니다.");
-                }
-                
-                // Read Content-Disposition to get filename
-                const disposition = response.headers.get('Content-Disposition');
-                let filename = `2026 도시 조사결과표(한성안)_미조사목록_${new Date().toISOString().slice(0,10)}.xlsx`;
-                
-                if (disposition && disposition.indexOf('filename*=') !== -1) {
-                    const matches = disposition.split("filename*=UTF-8''");
-                    if (matches.length > 1) {
-                        filename = decodeURIComponent(matches[1]);
-                    }
-                }
-
-                // Get blob and download
-                return response.blob().then(blob => ({ blob, filename }));
-            })
-            .then(({ blob, filename }) => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-
-                // Show success panel
-                processingPanel.style.display = 'none';
-                successPanel.style.display = 'block';
-            })
-            .catch(error => {
-                console.error(error);
-                processingPanel.style.display = 'none';
-                uploadPanel.style.display = 'block';
-                showError(error.message);
-            });
+        globalAggRows.forEach(r => {
+            exportData.push([
+                r.시도,
+                r.시군구,
+                r.필수개수,
+                r.조사완료,
+                `${(r.진행율 * 100).toFixed(1)}%`,
+                r.기본미조사,
+                r.가로수미조사,
+                r.총미조사
+            ]);
         });
 
-        // Reset to initial panel
-        btnReset.addEventListener('click', () => {
-            successPanel.style.display = 'none';
-            uploadPanel.style.display = 'block';
-            removeFile();
-        });
-    </script>
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
+        ws['!cols'] = [
+            { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 15 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "지역별_집계");
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const fileName = `2026 도시 조사결과표(한성안)_지역별집계_${todayStr}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    });
+</script>
+
 </body>
 </html>
