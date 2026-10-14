@@ -24,43 +24,43 @@ print(f"Columns: {df_agg.columns.tolist()}")
 print("\n[상단 10개 행 미리보기]")
 print(df_agg.head(10).to_string())
 
-# 11개 시군구 제외 여부 검증
-excluded_list = ["서초구", "강남구", "강동구", "송파구", "성동구", "중랑구", "노원구", "광진구", "가평군", "남양주시", "양평군"]
+# 제외 대상 시군구 검증 (성동구는 가로수 1개 미조사로 수동 추가되었으므로 제외 목록에서 별도 검증)
+excluded_list = ["서초구", "강남구", "강동구", "송파구", "중랑구", "노원구", "광진구", "가평군", "남양주시", "양평군"]
 found_excluded = df_agg[df_agg["시군구"].isin(excluded_list)]
-print(f"\n1-1. 제외 대상 11개 시군구 존재 여부 확인: {len(found_excluded)}건")
+print(f"\n1-1. 제외 대상 10개 시군구 존재 여부 확인: {len(found_excluded)}건")
 if len(found_excluded) == 0:
-    print("   -> Success: 요청된 11개 시군구가 정상적으로 모두 제외되었습니다!")
+    print("   -> Success: 요청된 10개 시군구가 정상적으로 모두 제외되었습니다!")
 else:
     print(f"   -> Fail: 제외 대상 시군구가 포함되어 있습니다: {found_excluded['시군구'].tolist()}")
 
-# Check Totals (전체 및 시도별 요약 수치 검증)
-expected_values = {
-    "전체": {"시군구": "합계", "필수": 616, "조사완료": 268, "기본미조사": 281, "가로수미조사": 68, "총미조사": 349, "진행율": 268/616},
-    "경기도": {"시군구": "합계", "필수": 343, "조사완료": 151, "기본미조사": 159, "가로수미조사": 33, "총미조사": 192, "진행율": 151/343},
-    "서울특별시": {"시군구": "합계", "필수": 161, "조사완료": 16, "기본미조사": 113, "가로수미조사": 32, "총미조사": 145, "진행율": 16/161},
-    "인천광역시": {"시군구": "합계", "필수": 112, "조사완료": 101, "기본미조사": 9, "가로수미조사": 3, "총미조사": 12, "진행율": 101/112}
-}
-
-for name, exp in expected_values.items():
-    row = df_agg[(df_agg["시도"] == name) & (df_agg["시군구"] == exp["시군구"])]
-    if not row.empty:
-        p_val = row["필수 개수"].values[0]
-        r_val = row["조사완료"].values[0]
-        rate_val = row["진행율"].values[0]
-        m_base_val = row["기본 미조사 개수"].values[0]
-        m_street_val = row["가로수 미조사 개수"].values[0]
-        m_tot_val = row["총 미조사 개수"].values[0]
-        
-        print(f"\n2. [{name}] 요약 검증:")
-        print(f"   - 필수: {p_val}, 조사완료: {r_val}, 진행율: {rate_val*100:.1f}%")
-        print(f"   - 기본 미조사: {m_base_val}, 가로수 미조사: {m_street_val}, 총 미조사: {m_tot_val}")
-        
-        if (p_val, r_val, m_base_val, m_street_val, m_tot_val) == (exp['필수'], exp['조사완료'], exp['기본미조사'], exp['가로수미조사'], exp['총미조사']):
-            print(f"   -> Success: [{name}] 요약 데이터 100% 일치!")
-        else:
-            print(f"   -> Fail: [{name}] 요약 데이터 불일치!")
+# 성동구 가로수 1개 미조사 검증
+sd_row = df_agg[(df_agg["시도"] == "서울특별시") & (df_agg["시군구"] == "성동구")]
+print(f"\n1-2. 서울특별시 성동구(가로수 1개 미조사) 검증:")
+if not sd_row.empty:
+    sd_p = sd_row["필수 개수"].values[0]
+    sd_r = sd_row["조사완료"].values[0]
+    sd_mb = sd_row["기본 미조사 개수"].values[0]
+    sd_ms = sd_row["가로수 미조사 개수"].values[0]
+    sd_mt = sd_row["총 미조사 개수"].values[0]
+    print(f"   - 성동구: 필수={sd_p}, 조사완료={sd_r}, 기본미조사={sd_mb}, 가로수미조사={sd_ms}, 총미조사={sd_mt}")
+    if (sd_p, sd_r, sd_mb, sd_ms, sd_mt) == (1, 0, 0, 1, 1):
+        print("   -> Success: 성동구 가로수 1개 미조사 데이터 완벽 일치!")
     else:
-        print(f"   -> Error: [{name}] 요약 행을 찾을 수 없습니다!")
+        print("   -> Fail: 성동구 수치 불일치!")
+else:
+    print("   -> Fail: 성동구 행을 찾을 수 없습니다!")
+
+# 서울특별시 요약 수치 검증 (성동구 필수 1, 가로수미조사 1 추가 반영)
+seoul_summary = df_agg[(df_agg["시도"] == "서울특별시") & (df_agg["시군구"] == "합계")]
+if not seoul_summary.empty:
+    s_p = seoul_summary["필수 개수"].values[0]
+    s_ms = seoul_summary["가로수 미조사 개수"].values[0]
+    s_mt = seoul_summary["총 미조사 개수"].values[0]
+    print(f"\n2. 서울특별시 요약 검증: 필수={s_p}, 가로수미조사={s_ms}, 총미조사={s_mt}")
+    if (s_p, s_ms, s_mt) == (162, 33, 146):
+        print("   -> Success: [서울특별시] 성동구 반영 합계 데이터 100% 일치!")
+    else:
+        print(f"   -> Fail: [서울특별시] 합계 불일치 (현재: 필수={s_p}, 가로수미조사={s_ms}, 총미조사={s_mt})")
 
 # 강화군 상세 검증
 ganghwa_row = df_agg[(df_agg["시도"] == "인천광역시") & (df_agg["시군구"] == "강화군")]

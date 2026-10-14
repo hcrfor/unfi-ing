@@ -64,6 +64,9 @@ def process_excel(file_stream):
     for sido in target_sidos:
         sigungus = set(df_pilsu[df_pilsu["시도"] == sido]["시군구"].dropna().unique()) | \
                    set(df_res_pos[df_res_pos[res_sido_col] == sido]["시군구"].dropna().unique())
+        # 서울특별시 성동구: 제외 목록 대상 중 가로수 1개 미조사 건으로 집계에 포함
+        if sido == "서울특별시":
+            sigungus.add("성동구")
         all_sigungu_by_sido[sido] = sorted(list(sigungus))
 
     # 지역별 집계 테이블 데이터 생성
@@ -89,24 +92,33 @@ def process_excel(file_stream):
         
         district_rows = []
         for sigungu in sigungu_list:
-            p_sub = sido_pilsu_df[sido_pilsu_df["시군구"] == sigungu]
-            r_sub = sido_res_df[sido_res_df["시군구"] == sigungu]
-            
-            p_cnt = len(p_sub)
-            r_cnt = len(r_sub)
-            rate = (r_cnt / p_cnt) if p_cnt > 0 else 0.0
-            
-            # 기본 (경관숲, 마을숲, 도시숲, 학교숲) 개수
-            p_base = len(p_sub[p_sub["유형그룹"] == "기본"])
-            r_base = len(r_sub[r_sub["유형그룹"] == "기본"])
-            mi_base = max(0, p_base - r_base)
-            
-            # 가로수 개수
-            p_street = len(p_sub[p_sub["유형그룹"] == "가로수"])
-            r_street = len(r_sub[r_sub["유형그룹"] == "가로수"])
-            mi_street = max(0, p_street - r_street)
-            
-            mi_cnt = mi_base + mi_street
+            if sido == "서울특별시" and sigungu == "성동구":
+                # 서울특별시 성동구: 가로수 1개 미조사 수동 추가 반영
+                p_cnt = 1
+                r_cnt = 0
+                rate = 0.0
+                mi_base = 0
+                mi_street = 1
+                mi_cnt = 1
+            else:
+                p_sub = sido_pilsu_df[sido_pilsu_df["시군구"] == sigungu]
+                r_sub = sido_res_df[sido_res_df["시군구"] == sigungu]
+                
+                p_cnt = len(p_sub)
+                r_cnt = len(r_sub)
+                rate = (r_cnt / p_cnt) if p_cnt > 0 else 0.0
+                
+                # 기본 (경관숲, 마을숲, 도시숲, 학교숲) 개수
+                p_base = len(p_sub[p_sub["유형그룹"] == "기본"])
+                r_base = len(r_sub[r_sub["유형그룹"] == "기본"])
+                mi_base = max(0, p_base - r_base)
+                
+                # 가로수 개수
+                p_street = len(p_sub[p_sub["유형그룹"] == "가로수"])
+                r_street = len(r_sub[r_sub["유형그룹"] == "가로수"])
+                mi_street = max(0, p_street - r_street)
+                
+                mi_cnt = mi_base + mi_street
             
             sido_pilsu_total += p_cnt
             sido_res_total += r_cnt

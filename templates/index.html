@@ -758,6 +758,10 @@
             const sigunguSet = new Set();
             pilsuList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
             resCompletedList.filter(r => r["시도"] === sido).forEach(r => sigunguSet.add(r["시군구"]));
+            // 서울특별시 성동구: 제외 목록 대상 중 가로수 1개 미조사 건으로 집계에 포함
+            if (sido === "서울특별시") {
+                sigunguSet.add("성동구");
+            }
             allSigunguBySido[sido] = Array.from(sigunguSet).sort();
         });
 
@@ -773,22 +777,34 @@
             let sidoP = 0, sidoR = 0, sidoMb = 0, sidoMs = 0, sidoM = 0;
 
             sigunguList.forEach(sigungu => {
-                const pSub = sidoPilsu.filter(r => r["시군구"] === sigungu);
-                const rSub = sidoRes.filter(r => r["시군구"] === sigungu);
+                let pCnt, rCnt, rate, miBase, miStreet, miCnt;
 
-                const pCnt = pSub.length;
-                const rCnt = rSub.length;
-                const rate = pCnt > 0 ? (rCnt / pCnt) : 0;
+                if (sido === "서울특별시" && sigungu === "성동구") {
+                    // 서울특별시 성동구: 가로수 1개 미조사 수동 추가 반영
+                    pCnt = 1;
+                    rCnt = 0;
+                    rate = 0;
+                    miBase = 0;
+                    miStreet = 1;
+                    miCnt = 1;
+                } else {
+                    const pSub = sidoPilsu.filter(r => r["시군구"] === sigungu);
+                    const rSub = sidoRes.filter(r => r["시군구"] === sigungu);
 
-                const pBase = pSub.filter(r => r["유형그룹"] === "기본").length;
-                const rBase = rSub.filter(r => r["유형그룹"] === "기본").length;
-                const miBase = Math.max(0, pBase - rBase);
+                    pCnt = pSub.length;
+                    rCnt = rSub.length;
+                    rate = pCnt > 0 ? (rCnt / pCnt) : 0;
 
-                const pStreet = pSub.filter(r => r["유형그룹"] === "가로수").length;
-                const rStreet = rSub.filter(r => r["유형그룹"] === "가로수").length;
-                const miStreet = Math.max(0, pStreet - rStreet);
+                    const pBase = pSub.filter(r => r["유형그룹"] === "기본").length;
+                    const rBase = rSub.filter(r => r["유형그룹"] === "기본").length;
+                    miBase = Math.max(0, pBase - rBase);
 
-                const miCnt = miBase + miStreet;
+                    const pStreet = pSub.filter(r => r["유형그룹"] === "가로수").length;
+                    const rStreet = rSub.filter(r => r["유형그룹"] === "가로수").length;
+                    miStreet = Math.max(0, pStreet - rStreet);
+
+                    miCnt = miBase + miStreet;
+                }
 
                 sidoP += pCnt;
                 sidoR += rCnt;
