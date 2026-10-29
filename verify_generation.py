@@ -25,11 +25,14 @@ print("\n[상단 10개 행 미리보기]")
 print(df_agg.head(10).to_string())
 
 # 제외 대상 시군구 검증 (성동구는 가로수 1개 미조사로 수동 추가되었으므로 제외 목록에서 별도 검증)
-excluded_list = ["서초구", "강남구", "강동구", "송파구", "중랑구", "노원구", "광진구", "가평군", "남양주시", "양평군"]
+excluded_list = [
+    "서초구", "강남구", "강동구", "송파구", "중랑구", "노원구", "광진구", 
+    "가평군", "남양주시", "양평군", "안성시", "평택시"
+]
 found_excluded = df_agg[df_agg["시군구"].isin(excluded_list)]
-print(f"\n1-1. 제외 대상 10개 시군구 존재 여부 확인: {len(found_excluded)}건")
+print(f"\n1-1. 제외 대상 {len(excluded_list)}개 시군구 존재 여부 확인: {len(found_excluded)}건")
 if len(found_excluded) == 0:
-    print("   -> Success: 요청된 10개 시군구가 정상적으로 모두 제외되었습니다!")
+    print(f"   -> Success: 요청된 {len(excluded_list)}개 시군구가 정상적으로 모두 제외되었습니다!")
 else:
     print(f"   -> Fail: 제외 대상 시군구가 포함되어 있습니다: {found_excluded['시군구'].tolist()}")
 
